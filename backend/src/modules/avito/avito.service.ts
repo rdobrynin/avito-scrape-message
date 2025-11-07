@@ -1,200 +1,204 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { Logger } from 'nestjs-pino';
-import * as puppeteer from 'puppeteer';
-import { ConfigService } from '@nestjs/config';
-import { ILoginResponse } from './interfaces/login.interface';
+import { Injectable, Logger } from '@nestjs/common';
+import puppeteer, { Browser, Page } from 'puppeteer';
 
 @Injectable()
-export class AvitoService implements OnModuleDestroy {
-  private browser: puppeteer.Browser | null = null;
+export class AvitoService {
+  private readonly logger = new Logger(AvitoService.name);
+  private browser: Browser;
 
-  constructor(
-    private configService: ConfigService,
-    private readonly logger: Logger,
-  ) {}
+  async login(email: string, password: string): Promise<{ success: boolean; message: string; cookies?: any[] }> {
+    let page: Page;
 
-  async onModuleDestroy() {
-    if (this.browser) {
-      await this.browser.close();
-    }
-  }
+    try {
+      this.logger.log('Launching browser...');
 
-  private async getBrowser(): Promise<puppeteer.Browser> {
-    if (!this.browser) {
+      const isHeadless = process.env.HEADLESS !== 'false';
+
       this.browser = await puppeteer.launch({
-        headless:
-          this.configService.get('PUPPETEER_HEADLESS', 'true') === 'true',
-        executablePath:
-          process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
+        // @ts-ignore
+        headless: isHeadless ? 'new' : false,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
           '--disable-gpu',
+          '--window-size=1920,1080',
+          '--disable-blink-features=AutomationControlled',
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins,site-per-process',
         ],
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       });
-    }
-    return this.browser;
-  }
 
-  async loginToAvito(login: string, password: string): Promise<ILoginResponse> {
-    let page: puppeteer.Page | null = null;
+      this.logger.log(`Browser launched in mode: ${isHeadless ? 'headless' : 'visible'}`);
 
-    try {
-      const browser = await this.getBrowser();
-      page = await browser.newPage();
+      page = await this.browser.newPage();
+
+      await page.setViewport({ width: 1920, height: 1080 });
+
+      // Hide authorization
+      await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', {
+          get: () => false,
+        });
+      });
 
       await page.setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       );
 
-      this.logger.log('Redirect to Avito page...');
-      await page.goto('https://www.avito.ru/#login', {
-        waitUntil: 'networkidle2',
-        timeout: 30000,
+      this.logger.log('Going to Avito page...');
+      await page.goto('https://www.avito.ru/profile/login', {
+        waitUntil: 'domcontentloaded',
+        timeout: 60000,
       });
 
-      await page.waitForSelector('[data-marker="login-form/login"]', {
-        timeout: 10000,
-      });
+      this.logger.log('The page is loaded, waiting fo form...');
 
-      await page.type('[data-marker="login-form/login"]', login, {
-        delay: 100,
-      });
+      await page.waitForSelector('input[type="text"]', { timeout: 15000 });
 
-      await page.type('[data-marker="login-form/password"]', password, {
-        delay: 100,
-      });
+      this.logger.log('Entering email...');
+      await page.type('input[type="text"]', email, { delay: 100 });
 
-      await page.click('[data-marker="login-form/submit"]');
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
-      try {
-        await page.waitForNavigation({
-          waitUntil: 'networkidle2',
-          timeout: 10000,
-        });
-      } catch (error) {
-        this.logger.warn('No any navigation, check profile...');
+      // Looking for enter or submit
+      this.logger.log('Searching submit button...');
+      const continueButton = await page.$('button[type="submit"]');
+      if (continueButton) {
+        this.logger.log('Pressing button Continue...');
+        await continueButton.click();
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
 
-      const isLoggedIn = await this.checkLoginSuccess(page);
+      this.logger.log('Check for password field...');
+      const passwordInput = await page.$('input[type="password"]');
 
-      if (isLoggedIn) {
-        const cookies = await page.cookies();
-        this.logger.log('Success access to Avito');
+      if (passwordInput) {
+        this.logger.log('Entering password...');
+        await passwordInput.click();
+        await page.keyboard.type(password, { delay: 100 });
 
-        await page.screenshot({ path: './storage/avito-login-success.png' });
+        await new Promise(resolve => setTimeout(resolve, 1500));
 
+        const loginButton = await page.$('button[type="submit"]');
+        if (loginButton) {
+          this.logger.log('Pressing button "Enter"...');
+          await loginButton.click();
+        }
+      }
+
+      this.logger.log('Waiting success enter...');
+      try {
+        await page.waitForNavigation({
+          waitUntil: 'domcontentloaded',
+          timeout: 15000
+        });
+        this.logger.log('Navigation has been completed');
+      } catch (navError) {
+        this.logger.warn('Timeout on navigation, checkout current URL...');
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const currentUrl = page.url();
+      this.logger.log(`Current URL: ${currentUrl}`);
+
+      const cookies = await page.cookies();
+
+      try {
+        await page.screenshot({ path: './logs/login-result.png', fullPage: true });
+        this.logger.log('Screenshot saved to ./logs/login-result.png');
+      } catch (screenshotError) {
+        this.logger.warn('Not success save screenshot:', screenshotError.message);
+      }
+
+      const isSuccess = currentUrl.includes('/profile') || currentUrl.includes('/personal');
+
+      await this.browser.close();
+
+      if (isSuccess) {
+        this.logger.log('Success enter in profile settings in Avito!');
         return {
           success: true,
-          message: 'Success access to Avito',
+          message: 'Success access in profile',
           cookies,
         };
       } else {
-        const errorText = await this.checkForErrors(page);
+        this.logger.warn('Access not confirmed, perhaps need authorization');
         return {
           success: false,
-          error: errorText || 'Can not access to Avito',
+          message: 'Require additional information or invalid creds',
+          cookies,
         };
       }
-    } catch (error) {
-      this.logger.error(`Error access to Avito: ${error.message}`);
 
+    } catch (error) {
+      this.logger.error('Error in access:', error.message);
+
+      // @ts-ignore
       if (page) {
-        await page.screenshot({ path: './storage/avito-login-error.png' });
+        try {
+          await page.screenshot({ path: './logs/error-screenshot.png', fullPage: true });
+          this.logger.log('Error screenshot saved in ./logs/error-screenshot.png');
+        } catch (screenshotError) {
+          this.logger.warn('Screenshot didn\'t saved properly');
+        }
+      }
+
+      if (this.browser) {
+        await this.browser.close();
       }
 
       return {
         success: false,
-        error: error.message,
+        message: `Error: ${error.message}`,
       };
-    } finally {
-      if (page) {
-        await page.close();
-      }
     }
   }
 
-  private async checkLoginSuccess(page: puppeteer.Page): Promise<boolean> {
-    try {
-      const checks = [
-        page
-          .waitForSelector('[data-marker="header/username"]', { timeout: 5000 })
-          .then(() => true)
-          .catch(() => false),
-        page
-          .waitForSelector('[data-marker="profile-menu/trigger"]', {
-            timeout: 5000,
-          })
-          .then(() => true)
-          .catch(() => false),
-        page.url().includes('/profile') || page.url().includes('/favorites'),
-      ];
+  async checkCookies(cookies: any[]): Promise<any> {
+    let page: Page;
 
-      const results: boolean[] = await Promise.all(checks);
-      return results.some((result) => result === true);
+    try {
+      this.browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+        ],
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      });
+
+      page = await this.browser.newPage();
+
+      await page.setCookie(...cookies);
+
+      await page.goto('https://www.avito.ru/profile', {
+        waitUntil: 'networkidle2',
+        timeout: 30000,
+      });
+
+      const profileData = await page.evaluate(() => {
+        return {
+          title: document.title,
+          url: window.location.href,
+        };
+      });
+
+      await this.browser.close();
+
+      return profileData;
+
     } catch (error) {
-      return false;
-    }
-  }
+      this.logger.error('Error with validation profile:', error.message);
 
-  private async checkForErrors(page: puppeteer.Page): Promise<string | null> {
-    try {
-      const errorSelectors: string[] = [
-        '[data-marker="login-form/error"]',
-        '.error-message',
-        '.text-danger',
-        '[class*="error"]',
-      ];
-
-      for (const selector of errorSelectors) {
-        const errorElement = await page.$(selector);
-        if (errorElement) {
-          const errorText = await page.evaluate(
-            (el) => el.textContent,
-            errorElement,
-          );
-          if (errorText && errorText.trim()) {
-            return errorText.trim();
-          }
-        }
+      if (this.browser) {
+        await this.browser.close();
       }
 
-      return null;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  async performActionAfterLogin(
-    login: string,
-    password: string,
-    action: (page: puppeteer.Page) => Promise<any>,
-  ) {
-    let page: puppeteer.Page | null = null;
-
-    try {
-      const loginResult = await this.loginToAvito(login, password);
-      if (!loginResult.success) {
-        throw new Error(`Error: ${loginResult.error}`);
-      }
-
-      const browser = await this.getBrowser();
-      page = await browser.newPage();
-
-      // Set cookies for session
-      if (loginResult.cookies) {
-        await page.setCookie(...loginResult.cookies);
-      }
-
-      return await action(page);
-    } finally {
-      if (page) {
-        await page.close();
-      }
+      throw error;
     }
   }
 }
