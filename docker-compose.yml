@@ -1,0 +1,27 @@
+services:
+  backend:
+    container_name: avito-scrape-message-backend
+    restart: unless-stopped
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: ./backend/.env
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: yarn start:dev
+    ports:
+      - '9000:9000'
+      - '9229:9229'
+    networks:
+      - internal-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  internal-network:
+    driver: bridge
