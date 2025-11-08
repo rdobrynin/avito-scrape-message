@@ -1,13 +1,17 @@
-import { defineConfig } from 'vite'
+import {defineConfig} from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite';
-// https://vite.dev/config/
+import {nodePolyfills} from 'vite-plugin-node-polyfills';
+
 export default defineConfig({
-  plugins: [
-react(),
-tailwindcss(),
-],
-  server: {
-    allowedHosts: true
-  }
+    plugins: [
+        react(),
+        tailwindcss(),
+        nodePolyfills({
+            include: ['process'],
+        }),
+    ],
+    server: {
+        allowedHosts: true
+    }
 })
