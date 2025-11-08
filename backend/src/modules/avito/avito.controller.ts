@@ -1,28 +1,28 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Controller, Post, Body, Get } from '@nestjs/common';
 import { AvitoService } from './avito.service';
-import { CreateLoginDto } from './dto/login.dto';
-import { ILoginResponse } from './interfaces/login.interface';
-import { Logger } from 'nestjs-pino';
+import { LoginDto } from './dto/login.dto';
 
 @Controller('avito')
 export class AvitoController {
-  constructor(
-    private readonly avitoService: AvitoService,
-    private readonly logger: Logger,
-  ) {}
+  constructor(private readonly avitoService: AvitoService) {}
 
-  @Post('login')
-  async login(@Body() createLoginDto: CreateLoginDto): Promise<ILoginResponse> {
-    this.logger.log(`Try access: ${createLoginDto.username}`);
-
-    return await this.avitoService.login(
-      createLoginDto.username,
-      createLoginDto.password,
+  @Post('start')
+  async start(@Body() loginDto: LoginDto) {
+    await this.avitoService.startListening(
+      loginDto.username,
+      loginDto.password,
     );
+    return { status: 'Listening started' };
   }
 
-  @Post('check-cookies')
-  async checkCookies(@Body() body: { cookies: any[] }) {
-    return await this.avitoService.checkCookies(body.cookies);
+  @Post('stop')
+  async stop() {
+    await this.avitoService.stopListening();
+    return { status: 'Listening stopped' };
+  }
+
+  @Get('status')
+  status() {
+    return { isRunning: this.avitoService.isRunning };
   }
 }
