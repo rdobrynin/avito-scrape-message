@@ -43,6 +43,8 @@ Frontend port `5173`
 
 This is a common problem in automation: sometimes avito temporary blocks IP due to often trigger auth
 ![login-result.png](login-result.png)
+or confirm with phone
+![login-result-phone.png](login-result-phone.png)
 
 See screenshot logs in `./backend/logs` folder.
 
