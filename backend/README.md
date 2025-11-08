@@ -1,2 +1,0 @@
-# Avito message translator System
-
