@@ -22,17 +22,20 @@ services:
     networks:
       - internal-network
   frontend:
+    container_name: avito-scrape-message-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    env_file: ./frontend/.env
     ports:
       - "5173:5173"
     volumes:
-      - ./frontend:/usr/src/frontend
-      - /usr/src/frontend/node_modules
-    env_file: ./frontend/.env
+      - ./frontend/src:/usr/src/frontend/src
+      - ./frontend/public:/usr/src/frontend/public
+      - ./frontend/package.json:/usr/src/frontend/package.json
     environment:
       - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
     networks:
       - internal-network
 

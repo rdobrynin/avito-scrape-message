@@ -1,7 +1,6 @@
-// hooks/useWebSocket.ts
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { Message, WebSocketHook } from '../types/websocket'; // Error TS1484
+import type { Message, WebSocketHook } from '../types/websocket';
 
 export const useWebSocket = (url: string): WebSocketHook => {
     const [messages, setMessages] = useState<Message[]>([]);
