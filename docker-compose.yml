@@ -13,14 +13,28 @@ services:
     ports:
       - '9000:9000'
       - '9229:9229'
-    networks:
-      - internal-network
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - internal-network
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/usr/src/frontend
+      - /usr/src/frontend/node_modules
+    env_file: ./frontend/.env
+    environment:
+      - NODE_ENV=development
+    networks:
+      - internal-network
 
 networks:
   internal-network:
