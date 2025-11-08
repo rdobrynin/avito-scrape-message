@@ -30,42 +30,6 @@ export function Trim(): PropertyDecorator {
   });
 }
 
-export function ToBoolean(): PropertyDecorator {
-  return Transform(
-    (params): boolean => {
-      switch (params.value) {
-        case 'true':
-          return true;
-        case 'false':
-          return false;
-        default:
-          return params.value;
-      }
-    },
-    { toClassOnly: true },
-  );
-}
-
-/**
- * @description convert string or number to integer
- * @example
- * @IsNumber()
- * @ToInt()
- * name: number;
- * @returns PropertyDecorator
- * @constructor
- */
-export function ToInt(): PropertyDecorator {
-  return Transform(
-    (params): number => {
-      const value = params.value;
-
-      return Number.parseInt(value, 10);
-    },
-    { toClassOnly: true },
-  );
-}
-
 /**
  * @description transforms to array, specially for query params
  * @example
@@ -128,5 +92,26 @@ export function ToUpperCase(): PropertyDecorator {
     {
       toClassOnly: true,
     },
+  );
+}
+
+export function ToBoolean(): PropertyDecorator {
+  return Transform(
+    (params) => {
+      switch (params.value) {
+        case 'true': {
+          return true;
+        }
+
+        case 'false': {
+          return false;
+        }
+
+        default: {
+          return params.value;
+        }
+      }
+    },
+    { toClassOnly: true },
   );
 }

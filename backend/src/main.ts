@@ -14,6 +14,16 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log'],
   });
 
+  process.on('SIGTERM', async () => {
+    await app.close();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    await app.close();
+    process.exit(0);
+  });
+
   app.useGlobalPipes(new ValidationPipe());
 
   app.useLogger(app.get(Logger));
@@ -31,9 +41,6 @@ async function bootstrap() {
       limit: Number(process.env.RATE_LIMIT_MAX),
     }),
   );
-
-  // added via prefix , due to no versionity, otherwise it should be added to swagger config
-  app.setGlobalPrefix('api');
 
   const config = new DocumentBuilder()
     .setTitle('Message System')
