@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
+import { AvitoModule } from './modules/avito/avito.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { LoggerModule } from 'nestjs-pino';
         },
       },
     }),
+    AvitoModule,
+    ChatModule,
   ],
   controllers: [],
   providers: [],

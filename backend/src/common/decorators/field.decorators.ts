@@ -6,6 +6,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
+  IsBoolean,
   IsDate,
   IsInt,
   IsNumber,
@@ -22,6 +23,7 @@ import {
 
 import {
   ToArray,
+  ToBoolean,
   ToLowerCase,
   ToUpperCase,
   Trim,
@@ -270,6 +272,35 @@ export function PropertyTypeField(
   if (options?.maxLength) {
     // @ts-ignore
     decorators.push(MaxLength(options.maxLength, { each: options?.each }));
+  }
+
+  return applyDecorators(...decorators);
+}
+
+interface IFieldOptions {
+  each?: boolean;
+  swagger?: boolean;
+  nullable?: boolean;
+  groups?: string[];
+}
+
+type IBooleanFieldOptions = IFieldOptions;
+
+export function BooleanField(
+  options: Omit<ApiPropertyOptions, 'type'> & IBooleanFieldOptions = {},
+): PropertyDecorator {
+  const decorators = [ToBoolean(), IsBoolean()];
+
+  if (options.nullable) {
+    decorators.push(IsNullable());
+  } else {
+    decorators.push(NotEquals(null));
+  }
+
+  if (options.swagger !== false) {
+    decorators.push(
+      ApiProperty({ type: Boolean, ...(options as ApiPropertyOptions) }),
+    );
   }
 
   return applyDecorators(...decorators);
