@@ -9,7 +9,8 @@
 
 ## Setup
 
-1. `cp .env.example .env`
+1. `cd backend` and `cp .env.example .env`
+2. `cd frontend` and `cp .env.example .env`
 2. Put your Avito credentials and subscriber (`Рушан`) in `.env`:
 ```
 AVITO_LOGIN=<login>

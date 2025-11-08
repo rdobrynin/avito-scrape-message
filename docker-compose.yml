@@ -13,14 +13,31 @@ services:
     ports:
       - '9000:9000'
       - '9229:9229'
-    networks:
-      - internal-network
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - internal-network
+  frontend:
+    container_name: avito-scrape-message-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    env_file: ./frontend/.env
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/usr/src/frontend/src
+      - ./frontend/public:/usr/src/frontend/public
+      - ./frontend/package.json:/usr/src/frontend/package.json
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+    networks:
+      - internal-network
 
 networks:
   internal-network:
