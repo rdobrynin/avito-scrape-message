@@ -2,6 +2,7 @@
 /backend/dist
 /backend/node_modules
 /backend/.env
+/frontend/.env
 
 # Logs
 logs
