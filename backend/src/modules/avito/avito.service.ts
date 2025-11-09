@@ -3,7 +3,8 @@ import puppeteer, { Browser, Page } from 'puppeteer';
 import { IChatInfo } from './interfaces/chat.interface';
 import { MessageDto } from './dto/message.dto';
 import { ConfigService } from '@nestjs/config';
-import { EventGateway } from '../event/event.gateway';
+import { EventService } from '../event/event.service';
+import { UserTypeEnum } from '../event/enum/user-type.enum';
 
 @Injectable()
 export class AvitoService {
@@ -12,10 +13,15 @@ export class AvitoService {
 
   constructor(
     private configService: ConfigService,
-    private eventGateway: EventGateway,
+    private eventService: EventService,
   ) {}
 
   async login(email: string, password: string): Promise<MessageDto> {
+    await this.eventService.sendMessage(
+      UserTypeEnum.SERVER,
+      'Starting authorize',
+    );
+
     let page: Page;
 
     try {
@@ -57,7 +63,10 @@ export class AvitoService {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       );
 
-      this.logger.log('Navigating to Avito login page...');
+      await this.eventService.sendMessage(
+        UserTypeEnum.SERVER,
+        'Navigating to Avito login page...',
+      );
       await page.goto('https://www.avito.ru/profile/login', {
         waitUntil: 'domcontentloaded',
         timeout: 60000,
@@ -76,7 +85,10 @@ export class AvitoService {
 
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      this.logger.log('Looking for submit button...');
+      await this.eventService.sendMessage(
+        UserTypeEnum.SERVER,
+        'Looking for submit button...',
+      );
       const continueButton = await page.$('button[type="submit"]');
       if (continueButton) {
         this.logger.log('Clicking "Continue" button...');
@@ -84,11 +96,17 @@ export class AvitoService {
         await new Promise((resolve) => setTimeout(resolve, 3000));
       }
 
-      this.logger.log('Waiting for password field...');
+      await this.eventService.sendMessage(
+        UserTypeEnum.SERVER,
+        'Waiting for password field...',
+      );
       const passwordInput = await page.$('input[type="password"]');
 
       if (passwordInput) {
-        this.logger.log('Entering password...');
+        await this.eventService.sendMessage(
+          UserTypeEnum.SERVER,
+          'Entering password...',
+        );
         await passwordInput.click();
         await page.keyboard.type(password, { delay: 100 });
 
@@ -101,7 +119,10 @@ export class AvitoService {
         }
       }
 
-      this.logger.log('Waiting for successful login...');
+      await this.eventService.sendMessage(
+        UserTypeEnum.SERVER,
+        'Waiting for successful login...',
+      );
       try {
         await page.waitForNavigation({
           waitUntil: 'domcontentloaded',
@@ -109,7 +130,10 @@ export class AvitoService {
         });
         this.logger.log('Navigation completed');
       } catch (navError) {
-        this.logger.warn('Navigation timeout, checking current URL...');
+        await this.eventService.sendMessage(
+          UserTypeEnum.SERVER,
+          'Navigation timeout, checking current URL...',
+        );
       }
 
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -124,17 +148,24 @@ export class AvitoService {
           path: './logs/login-result.png',
           fullPage: true,
         });
-        this.logger.log('Screenshot saved to ./logs/login-result.png');
+        await this.eventService.sendMessage(
+          UserTypeEnum.SERVER,
+          'Screenshot saved to ./logs/login-result.png',
+        );
       } catch (screenshotError) {
         this.logger.warn('Failed to save screenshot:', screenshotError.message);
       }
 
-      const isSuccess =
-        currentUrl.includes('/profile') || currentUrl.includes('/personal');
+      const isSuccess = currentUrl.includes('/profile');
 
       await this.browser.close();
 
       if (isSuccess) {
+        await this.eventService.sendMessage(
+            UserTypeEnum.SERVER,
+            currentUrl,
+            true,
+        );
         this.logger.log('Successfully logged into Avito account!');
         // await this.getMessagesFromUser(cookies, this.configService.get<string>('AVITO_SUBSCRIBER_NAME')!);
         return {

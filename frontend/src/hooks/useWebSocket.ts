@@ -5,6 +5,7 @@ import type { Message, WebSocketHook } from '../types/websocket';
 export const useWebSocket = (url: string): WebSocketHook => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isConnected, setIsConnected] = useState<boolean>(false);
+    const [isError, ] = useState<boolean>(false);
     const [username, setUsername] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const socketRef = useRef<Socket | null>(null);
@@ -68,6 +69,7 @@ export const useWebSocket = (url: string): WebSocketHook => {
             const messageData: Message = {
                 username,
                 message,
+                isError,
                 timestamp: new Date()
             };
             socketRef.current.emit('sendMessage', messageData);

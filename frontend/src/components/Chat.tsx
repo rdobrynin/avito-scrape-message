@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
+import LoginForm from './LoginForm';
 
 export const Chat: React.FC = () => {
+    const [showLoginForm, setShowLoginForm] = useState<boolean>(true);
     const [inputMessage, setInputMessage] = useState<string>('');
     const { messages, sendMessage, isConnected, username, setUsername, error } = useWebSocket('http://localhost:9000');
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -9,6 +11,15 @@ export const Chat: React.FC = () => {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    const handleLoginSuccess = (): void => {
+        setShowLoginForm(false);
+        setUsername('user')
+    };
+
+    // const handleReLogin = (): void => {
+    //     setShowLoginForm(true);
+    // };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -44,26 +55,30 @@ export const Chat: React.FC = () => {
                         </div>
                     </div>
                 </div>
+                {/*{showLoginForm && (*/}
+                {/*    <LoginForm onLoginSuccess={handleLoginSuccess} />*/}
+                {/*)}*/}
 
-                {!username && (
-                    <div className="p-6 bg-yellow-50 border-b border-yellow-200">
-                        <div className="flex items-center space-x-4">
-                            <div className="flex-1">
-                                <label htmlFor="username" className="block text-sm font-medium text-yellow-800 mb-2">
-                                    Enter your username to start chatting
-                                </label>
-                                <input
-                                    id="username"
-                                    type="text"
-                                    placeholder="Your username..."
-                                    value={username}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
-                                    className="w-full px-4 py-2 border border-yellow-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                                    autoFocus
-                                />
-                            </div>
-                        </div>
-                    </div>
+                {showLoginForm && (
+                    <LoginForm onLoginSuccess={handleLoginSuccess} />
+                    // <div className="p-6 bg-yellow-50 border-b border-yellow-200">
+                    //     <div className="flex items-center space-x-4">
+                    //         <div className="flex-1">
+                    //             <label htmlFor="username" className="block text-sm font-medium text-yellow-800 mb-2">
+                    //                 Enter your username to start chatting
+                    //             </label>
+                    //             <input
+                    //                 id="username"
+                    //                 type="text"
+                    //                 placeholder="Your username..."
+                    //                 value={username}
+                    //                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
+                    //                 className="w-full px-4 py-2 border border-yellow-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    //                 autoFocus
+                    //             />
+                    //         </div>
+                    //     </div>
+                    // </div>
                 )}
 
                 {error && (
@@ -81,9 +96,8 @@ export const Chat: React.FC = () => {
                     </div>
                 )}
 
-                {/* Messages Container */}
-                <div className="h-96 overflow-y-auto p-4 bg-gray-50">
-                    {messages.length === 0 ? (
+                <div className={`${username ? 'h-96 overflow-y-auto p-4 bg-gray-50' : ''}`}>
+                    {messages.length === 0 && username ? (
                         <div className="flex items-center justify-center h-full text-gray-500">
                             <div className="text-center">
                                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,34 +143,37 @@ export const Chat: React.FC = () => {
 
                 {/* Message Input */}
                 {username && (
-                    <div className="border-t border-gray-200 p-4 bg-white">
-                        <form onSubmit={handleSubmit} className="flex space-x-4">
-                            <div className="flex-1">
-                                <input
-                                    type="text"
-                                    placeholder={isConnected ? "Type your message..." : "Connecting..."}
-                                    value={inputMessage}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)}
-                                    onKeyPress={handleKeyPress}
-                                    disabled={!isConnected}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                />
+                    <>
+                        <div className="border-t border-gray-200 p-4 bg-white">
+                            <form onSubmit={handleSubmit} className="flex space-x-4">
+                                <div className="flex-1">
+                                    <input
+                                        type="text"
+                                        placeholder={isConnected ? "Type your message..." : "Connecting..."}
+                                        value={inputMessage}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)}
+                                        onKeyPress={handleKeyPress}
+                                        disabled={!isConnected}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={!inputMessage.trim() || !isConnected}
+                                    className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                    </svg>
+                                </button>
+                            </form>
+                            <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                                <span>Logged in as <strong className="text-blue-600">{username}</strong></span>
+                                <span>Press Enter to send</span>
                             </div>
-                            <button
-                                type="submit"
-                                disabled={!inputMessage.trim() || !isConnected}
-                                className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
-                            </button>
-                        </form>
-                        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                            <span>Logged in as <strong className="text-blue-600">{username}</strong></span>
-                            <span>Press Enter to send</span>
                         </div>
-                    </div>
+                        {/*<div className='flex justify-center'><button onClick={handleReLogin} className="px-4 m-4 text-center text-sm py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200">Login again</button></div>*/}
+                    </>
                 )}
             </div>
         </div>

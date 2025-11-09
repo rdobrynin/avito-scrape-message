@@ -2,6 +2,7 @@
 export interface Message {
     username: string;
     message: string;
+    isError: boolean;
     timestamp?: Date;
 }
 
