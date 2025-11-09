@@ -1,4 +1,8 @@
 @import "tailwindcss";
-/*@tailwind base;*/
-/*@tailwind components;*/
-/*@tailwind utilities;*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.red {
+    color: #8a0303;
+}
